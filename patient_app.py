@@ -1,181 +1,263 @@
 import streamlit as st
+import random
 import time
 
-# --- PAGE CONFIGURATION (Accessibility First) ---
+# --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Elderly Assistance Portal",
-    page_icon="👵",
+    page_title="MindEase - Daily Companion",
+    page_icon="🧠",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- ACCESSIBILITY CSS STYLING ---
+# --- MODERN ACCESSIBLE UI DESIGN (CSS) ---
 st.markdown("""
     <style>
-    /* High contrast background & large default font */
+    /* Gradient Warm Background */
     .stApp {
-        background-color: #F8F9FA;
+        background: linear-gradient(135deg, #FFF9F2 0%, #E8F5E9 100%);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Soft Floating Card Container */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        border: 2px solid #E0E0E0;
+        margin-bottom: 25px;
+        transition: transform 0.2s ease;
+    }
+
+    /* Friendly Typography */
+    .main-title {
+        font-size: 42px !important;
+        font-weight: 800;
+        color: #2E7D32;
+        text-align: center;
+        margin-bottom: 5px;
     }
     
-    /* Large high-contrast action buttons */
-    div.stButton > button {
-        width: 100%;
-        height: 80px;
-        font-size: 26px !important;
-        font-weight: bold !important;
-        border-radius: 16px !important;
-        border: 3px solid #1D3557 !important;
-        background-color: #1D3557 !important;
-        color: white !important;
+    .sub-title {
+        font-size: 22px !important;
+        color: #558B2F;
+        text-align: center;
+        margin-bottom: 25px;
+    }
+
+    .section-head {
+        font-size: 28px !important;
+        font-weight: 700;
+        color: #1B5E20;
         margin-bottom: 15px;
     }
-    
+
+    /* Custom Pastel Large Action Buttons */
+    div.stButton > button {
+        width: 100%;
+        height: 75px;
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        border-radius: 20px !important;
+        border: none !important;
+        box-shadow: 0 6px 15px rgba(0,0,0,0.1) !important;
+        transition: all 0.2s ease-in-out !important;
+        color: #1A3636 !important;
+    }
+
     div.stButton > button:hover {
-        background-color: #457B9D !important;
-        border-color: #457B9D !important;
-        color: white !important;
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
     }
 
-    /* Custom Cards for Reminders & Games */
-    .patient-card {
-        background-color: #FFFFFF;
-        border: 3px solid #2A9D8F;
-        border-radius: 18px;
-        padding: 25px;
-        margin-bottom: 20px;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.08);
-    }
-
-    .card-title {
-        font-size: 30px;
-        font-weight: 800;
-        color: #264653;
-        margin-bottom: 10px;
-    }
-
-    .card-text {
-        font-size: 22px;
-        color: #2B2D42;
+    /* Task Completion Banner */
+    .task-done {
+        background-color: #E8F5E9;
+        border-left: 6px solid #4CAF50;
+        padding: 15px;
+        border-radius: 12px;
+        font-size: 20px;
+        font-weight: 600;
+        color: #2E7D32;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- BROWSER TEXT-TO-SPEECH (AUDIO GUIDANCE) ---
+# --- BROWSER SPEECH SYNTHESIS (VOICE ASSISTANT) ---
 def speak(text):
-    """Executes browser-native JavaScript to speak text out loud."""
+    """Voice feedback engine using HTML/JavaScript."""
     js_code = f"""
         <script>
+            window.speechSynthesis.cancel();
             var msg = new SpeechSynthesisUtterance('{text}');
-            msg.rate = 0.85; // Slower rate for elderly listeners
+            msg.rate = 0.85;
+            msg.pitch = 1.0;
             window.speechSynthesis.speak(msg);
         </script>
     """
     st.components.v1.html(js_code, height=0)
 
-# --- NAVIGATION HEADER ---
-st.markdown("<h1 style='text-align: center; font-size: 44px; color: #1D3557;'>👵 Good Morning! Welcome Home</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 24px; color: #457B9D;'>Tap any big button below to begin</p>", unsafe_allow_html=True)
+# --- HEADER SECTION ---
+st.markdown("<h1 class='main-title'>🌸 MindEase Companion</h1>", unsafe_allow_html=True)
+st.markdown("<p class='sub-title'>Your friendly daily activity & brain exercise space</p>", unsafe_allow_html=True)
 
-st.divider()
-
-# --- TOP NAVIGATION BUTTONS ---
-col_nav1, col_nav2 = st.columns(2)
+# --- TOP NAVIGATION TABS ---
+col_nav1, col_nav2, col_nav3 = st.columns(3)
 
 with col_nav1:
-    if st.button("🧩 Memory Game", key="nav_game"):
+    if st.button("🧩 Memory Arcade", key="nav_game"):
         st.session_state['active_tab'] = "game"
-        speak("Opening cognitive memory game")
+        speak("Welcome to the Memory Arcade!")
 
 with col_nav2:
-    if st.button("💊 Daily Schedule", key="nav_schedule"):
-        st.session_state['active_tab'] = "schedule"
-        speak("Opening daily schedule and medication reminders")
+    if st.button("💛 How Are You?", key="nav_mood"):
+        st.session_state['active_tab'] = "mood"
+        speak("Let's check in on how you are feeling today.")
 
-# Default active tab setup
-if 'active_tab' not in st.session_state or st.session_state['active_tab'] == "photos":
+with col_nav3:
+    if st.button("📋 Daily Schedule", key="nav_schedule"):
+        st.session_state['active_tab'] = "schedule"
+        speak("Here is your schedule for today.")
+
+if 'active_tab' not in st.session_state:
     st.session_state['active_tab'] = "game"
 
-st.write("<br>", unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
 
 # ==========================================
-# MODULE 1: COGNITIVE COLOR PATTERN GAME
+# MODULE 1: INTERACTIVE MEMORY ARCADE (GAME)
 # ==========================================
 if st.session_state['active_tab'] == "game":
-    st.markdown("<div class='patient-card'>", unsafe_allow_html=True)
-    st.markdown("<div class='card-title'>🧩 Color Memory Game</div>", unsafe_allow_html=True)
-    st.markdown("<div class='card-text'>Look at the target color and tap the matching button!</div><br>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.markdown("<div class='section-head'>🧩 Emoji & Symbol Match Game</div>", unsafe_allow_html=True)
+    st.write("<p style='font-size: 20px; color: #555;'>Look at the active target item and tap the matching card below!</p>", unsafe_allow_html=True)
 
-    # Initialize Game State
-    if 'target_color' not in st.session_state:
-        st.session_state['target_color'] = "RED"
+    # Game State Management
+    ITEMS = [
+        {"name": "SUN", "icon": "☀️", "speech": "Sun"},
+        {"name": "FLOWER", "icon": "🌸", "speech": "Flower"},
+        {"name": "TEA", "icon": "🍵", "speech": "Tea Cup"},
+        {"name": "BIRD", "icon": "🐦", "speech": "Bird"}
+    ]
+
+    if 'target_item' not in st.session_state:
+        st.session_state['target_item'] = random.choice(ITEMS)
         st.session_state['score'] = 0
+        st.session_state['streak'] = 0
 
-    st.markdown(f"<h2 style='font-size: 32px;'>Target Color: <span style='color:#E63946;'>{st.session_state['target_color']}</span></h2>", unsafe_allow_html=True)
+    target = st.session_state['target_item']
 
-    col_g1, col_g2, col_g3 = st.columns(3)
+    # Display Active Target Card
+    st.markdown(f"""
+        <div style='text-align: center; background: #FFF3E0; border: 3px dashed #FF9800; border-radius: 20px; padding: 20px; margin-bottom: 25px;'>
+            <p style='font-size: 22px; color: #E65100; font-weight:bold; margin:0;'>FIND THIS MATCH:</p>
+            <h1 style='font-size: 80px; margin: 10px 0;'>{target['icon']}</h1>
+            <h3 style='font-size: 28px; color: #D84315; margin:0;'>{target['name']}</h3>
+        </div>
+    """, unsafe_allow_html=True)
 
-    with col_g1:
-        if st.button("🔴 RED", key="btn_red"):
-            if st.session_state['target_color'] == "RED":
-                st.session_state['score'] += 10
-                speak("Correct! Great job.")
-                st.balloons()
-                st.session_state['target_color'] = "BLUE"
-            else:
-                speak("Try again!")
+    # Interactive Game Buttons
+    cols = st.columns(4)
+    for idx, item in enumerate(ITEMS):
+        with cols[idx]:
+            if st.button(f"{item['icon']}\n{item['name']}", key=f"btn_game_{idx}"):
+                if item['name'] == target['name']:
+                    st.session_state['score'] += 10
+                    st.session_state['streak'] += 1
+                    speak(f"Awesome! You found the {item['speech']}.")
+                    st.balloons()
+                    # Choose new target
+                    st.session_state['target_item'] = random.choice([i for i in ITEMS if i['name'] != target['name']])
+                    st.rerun()
+                else:
+                    speak(f"That is the {item['speech']}. Give it another try!")
 
-    with col_g2:
-        if st.button("🔵 BLUE", key="btn_blue"):
-            if st.session_state['target_color'] == "BLUE":
-                st.session_state['score'] += 10
-                speak("Wonderful! You matched the blue color.")
-                st.balloons()
-                st.session_state['target_color'] = "GREEN"
-            else:
-                speak("Try again!")
+    # Live Score Metrics
+    st.markdown("<br>", unsafe_allow_html=True)
+    m1, m2 = st.columns(2)
+    with m1:
+        st.markdown(f"<h3 style='color: #2E7D32;'>⭐ Total Stars: <b>{st.session_state['score']} Points</b></h3>", unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"<h3 style='color: #E65100;'>🔥 Streak: <b>{st.session_state['streak']} in a row!</b></h3>", unsafe_allow_html=True)
 
-    with col_g3:
-        if st.button("🟢 GREEN", key="btn_green"):
-            if st.session_state['target_color'] == "GREEN":
-                st.session_state['score'] += 10
-                speak("Excellent work!")
-                st.balloons()
-                st.session_state['target_color'] = "RED"
-            else:
-                speak("Try again!")
-
-    st.markdown(f"<br><h3 style='font-size: 28px; color: #2A9D8F;'>Total Stars Earned: ⭐ {st.session_state['score']} Points</h3>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# MODULE 2: DAILY SCHEDULE & REMINDERS
+# MODULE 2: DAILY MOOD & WELLNESS CHECK-IN
+# ==========================================
+elif st.session_state['active_tab'] == "mood":
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.markdown("<div class='section-head'>💛 How are you feeling right now?</div>", unsafe_allow_html=True)
+    st.write("<p style='font-size: 20px; color: #555;'>Tap an emotion to share how your day is going.</p>", unsafe_allow_html=True)
+
+    col_m1, col_m2, col_m3 = st.columns(3)
+
+    with col_m1:
+        if st.button("😊 Happy", key="mood_happy"):
+            speak("I am so glad to hear that you are feeling happy today!")
+            st.success("✨ Wonderful! Keep smiling today.")
+
+    with col_m2:
+        if st.button("😌 Peaceful", key="mood_calm"):
+            speak("That is lovely. Wishing you a calm and pleasant day.")
+            st.info("🌿 Peace and quiet is wonderful for the mind.")
+
+    with col_m3:
+        if st.button("🥱 Tired", key="mood_tired"):
+            speak("Remember to take rest and drink some water.")
+            st.warning("☕ Take it easy and enjoy a gentle rest.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ==========================================
+# MODULE 3: DAILY ROUTINE & INTERACTIVE LIST
 # ==========================================
 elif st.session_state['active_tab'] == "schedule":
-    st.markdown("<div class='patient-card'>", unsafe_allow_html=True)
-    st.markdown("<div class='card-title'>💊 Today's Routine</div>", unsafe_allow_html=True)
-    
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.markdown("<div class='section-head'>📋 Today's Routine Schedule</div>", unsafe_allow_html=True)
+
+    # Initialize task state
+    if 'tasks' not in st.session_state:
+        st.session_state['tasks'] = {
+            "task1": False,
+            "task2": False
+        }
+
     # Task 1
-    st.markdown("<p class='card-text'><b>1. Morning Medicine (8:30 AM)</b></p>", unsafe_allow_html=True)
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        if st.button("🔊 Listen to Reminder", key="rem1"):
-            speak("Time to take 1 red pill after breakfast.")
-    with c2:
-        if st.button("✅ Done", key="done1"):
-            speak("Medicine marked as taken.")
-            st.success("Completed!")
+    st.markdown("<h3 style='color: #1B5E20;'>1. Morning Medication & Breakfast (8:30 AM)</h3>", unsafe_allow_html=True)
+    t1_col1, t1_col2 = st.columns([2, 1])
+    
+    with t1_col1:
+        if st.button("🔊 Read Reminder", key="audio_t1"):
+            speak("Time for morning medication with a fresh glass of water.")
+            
+    with t1_col2:
+        if not st.session_state['tasks']['task1']:
+            if st.button("✅ Mark Done", key="btn_done1"):
+                st.session_state['tasks']['task1'] = True
+                speak("Great job completing your morning routine!")
+                st.rerun()
+        else:
+            st.markdown("<div class='task-done'>✓ Completed</div>", unsafe_allow_html=True)
 
     st.divider()
 
     # Task 2
-    st.markdown("<p class='card-text'><b>2. Drink Water (11:00 AM)</b></p>", unsafe_allow_html=True)
-    c3, c4 = st.columns([2, 1])
-    with c3:
-        if st.button("🔊 Listen to Reminder", key="rem2"):
-            speak("Please drink one full glass of water.")
-    with c4:
-        if st.button("✅ Done", key="done2"):
-            speak("Water break marked as completed.")
-            st.success("Completed!")
+    st.markdown("<h3 style='color: #1B5E20;'>2. Afternoon Walk or Rest (2:00 PM)</h3>", unsafe_allow_html=True)
+    t2_col1, t2_col2 = st.columns([2, 1])
+    
+    with t2_col1:
+        if st.button("🔊 Read Reminder", key="audio_t2"):
+            speak("Time for a gentle short walk or relaxation.")
+            
+    with t2_col2:
+        if not st.session_state['tasks']['task2']:
+            if st.button("✅ Mark Done", key="btn_done2"):
+                st.session_state['tasks']['task2'] = True
+                speak("Walk completed! Stay hydrated.")
+                st.rerun()
+        else:
+            st.markdown("<div class='task-done'>✓ Completed</div>", unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
