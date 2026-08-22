@@ -1,6 +1,12 @@
 import streamlit as st
 import random
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+try:
+    from zoneinfo import ZoneInfo
+    IST = ZoneInfo("Asia/Kolkata")
+except Exception:
+    # Fallback if the system has no tz database available — India Standard Time is a fixed +5:30 offset
+    IST = timezone(timedelta(hours=5, minutes=30))
 
 # =====================================================
 # PAGE CONFIGURATION
@@ -92,6 +98,16 @@ st.markdown(f"""
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 900px;
+        margin: 0 auto;
+    }}
+    /* Desktop / large screens: give the layout more breathing room */
+    @media (min-width: 1200px) {{
+        .block-container {{
+            max-width: 1100px !important;
+            padding-top: 2rem !important;
+        }}
+        .glass-card {{ padding: 34px 38px; }}
+        .target-card h1 {{ font-size: 96px; }}
     }}
 
     section[data-testid="stSidebar"] {{
@@ -351,7 +367,7 @@ with st.sidebar:
 st.markdown("<h1 class='main-title'>🌸 MindEase Companion</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-title'>Your friendly daily activity & brain exercise space</p>", unsafe_allow_html=True)
 
-now = datetime.now()
+now = datetime.now(IST)
 st.markdown(
     f"<p class='body-text' style='text-align:center; opacity:0.75;'>🗓️ {now.strftime('%A, %d %B %Y')} &nbsp;•&nbsp; 🕒 {now.strftime('%I:%M %p')}</p>",
     unsafe_allow_html=True
@@ -391,20 +407,62 @@ if st.session_state["active_tab"] == "game":
         unsafe_allow_html=True
     )
 
-    ALL_ITEMS = [
-        {"name": "SUN", "icon": "☀️", "speech": "Sun"},
-        {"name": "FLOWER", "icon": "🌸", "speech": "Flower"},
-        {"name": "TEA", "icon": "🍵", "speech": "Tea Cup"},
-        {"name": "BIRD", "icon": "🐦", "speech": "Bird"},
-        {"name": "STAR", "icon": "⭐", "speech": "Star"},
-        {"name": "APPLE", "icon": "🍎", "speech": "Apple"},
-    ]
+    # Themed practice sets — pick everyday objects familiar to the patient.
+    # "Nature & Sky" is the original set and stays the default.
+    GAME_THEMES = {
+        "🌞 Nature & Sky": [
+            {"name": "SUN", "icon": "☀️", "speech": "Sun"},
+            {"name": "FLOWER", "icon": "🌸", "speech": "Flower"},
+            {"name": "TEA", "icon": "🍵", "speech": "Tea Cup"},
+            {"name": "BIRD", "icon": "🐦", "speech": "Bird"},
+            {"name": "STAR", "icon": "⭐", "speech": "Star"},
+            {"name": "APPLE", "icon": "🍎", "speech": "Apple"},
+        ],
+        "🪑 Home & Furniture": [
+            {"name": "TABLE", "icon": "🍽️", "speech": "Table"},
+            {"name": "CHAIR", "icon": "🪑", "speech": "Chair"},
+            {"name": "BED", "icon": "🛏️", "speech": "Bed"},
+            {"name": "DOOR", "icon": "🚪", "speech": "Door"},
+            {"name": "WINDOW", "icon": "🪟", "speech": "Window"},
+            {"name": "SOFA", "icon": "🛋️", "speech": "Sofa"},
+        ],
+        "🌿 Flowers & Plants": [
+            {"name": "FLOWER", "icon": "🌸", "speech": "Flower"},
+            {"name": "SUNFLOWER", "icon": "🌻", "speech": "Sunflower"},
+            {"name": "TREE", "icon": "🌳", "speech": "Tree"},
+            {"name": "CACTUS", "icon": "🌵", "speech": "Cactus"},
+            {"name": "LEAF", "icon": "🍀", "speech": "Leaf"},
+            {"name": "PLANT", "icon": "🪴", "speech": "Potted Plant"},
+        ],
+        "🍪 Snacks & Kitchen": [
+            {"name": "CHOCOLATE", "icon": "🍫", "speech": "Chocolate"},
+            {"name": "BISCUIT", "icon": "🍪", "speech": "Biscuit"},
+            {"name": "TEA", "icon": "☕", "speech": "Tea"},
+            {"name": "MILK", "icon": "🥛", "speech": "Milk"},
+            {"name": "PLATE", "icon": "🍽️", "speech": "Plate"},
+            {"name": "SPOON", "icon": "🥄", "speech": "Spoon"},
+        ],
+    }
 
+    st.markdown("<p class='body-text' style='margin-bottom:6px;'><b>🎯 Choose what to practice with:</b></p>", unsafe_allow_html=True)
+    theme_choice = st.selectbox(
+        "Practice set", list(GAME_THEMES.keys()),
+        index=list(GAME_THEMES.keys()).index(st.session_state.get("game_theme", "🌞 Nature & Sky")),
+        label_visibility="collapsed"
+    )
+    if theme_choice != st.session_state.get("game_theme"):
+        st.session_state["game_theme"] = theme_choice
+        st.session_state["target_item"] = random.choice(GAME_THEMES[theme_choice])
+        speak(f"Now practicing with {theme_choice.split(' ', 1)[1]} pictures.")
+        st.rerun()
+
+    ALL_ITEMS = GAME_THEMES[st.session_state.get("game_theme", "🌞 Nature & Sky")]
+
+    st.session_state.setdefault("score", 0)
+    st.session_state.setdefault("streak", 0)
+    st.session_state.setdefault("best_streak", 0)
     if "target_item" not in st.session_state:
         st.session_state["target_item"] = random.choice(ALL_ITEMS)
-        st.session_state["score"] = 0
-        st.session_state["streak"] = 0
-        st.session_state["best_streak"] = 0
 
     if not st.session_state["game_intro_spoken"]:
         speak("Look at the picture in the orange dashed card, then tap the same picture in the grid below it.")
