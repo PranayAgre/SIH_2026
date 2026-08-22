@@ -80,11 +80,21 @@ else:
 
 motion_css = "" if not st.session_state["reduce_motion"] else "*{transition:none !important; animation:none !important;}"
 
+# A solid (non-transparent) version of the card color, used for native widget
+# backgrounds (popovers, inputs) where a semi-transparent rgba would let the
+# browser/OS dark-mode background bleed through and wreck contrast.
+_solid_card_bg = "#1A1A1A" if st.session_state["high_contrast"] else "#FFFFFF"
+
 # =====================================================
 # DYNAMIC CSS — smooth easing, mobile-first layout
 # =====================================================
 st.markdown(f"""
     <style>
+    /* Lock the color scheme to what THIS app defines, so widgets don't
+       silently flip to the browser/OS dark theme and become unreadable
+       against our custom (light or high-contrast) backgrounds. */
+    :root, .stApp {{ color-scheme: {"dark" if st.session_state["high_contrast"] else "light"} !important; }}
+
     html {{ scroll-behavior: smooth; }}
 
     .stApp {{
@@ -180,7 +190,7 @@ st.markdown(f"""
         transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
                     box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease !important;
         color: {text_main} !important;
-        background: linear-gradient(180deg, #FFFFFF 0%, {bg2} 100%) !important;
+        background: linear-gradient(180deg, {_solid_card_bg} 0%, {bg2} 100%) !important;
         will-change: transform;
     }}
     div.stButton > button:hover {{
@@ -193,12 +203,18 @@ st.markdown(f"""
         box-shadow: 0 3px 8px rgba(0,0,0,0.14) !important;
         transition-duration: 0.06s !important;
     }}
+    div.stButton > button p {{
+        color: {text_main} !important;
+    }}
 
     .nav-active button {{
         background: linear-gradient(180deg, {accent} 0%, {accent_dark} 100%) !important;
         color: white !important;
         border-color: {accent_dark} !important;
         animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }}
+    .nav-active button p {{
+        color: white !important;
     }}
 
     .target-card {{
@@ -210,7 +226,7 @@ st.markdown(f"""
         margin-bottom: 20px;
         animation: pulseGlow 2.4s infinite, popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }}
-    .target-card h1 {{ font-size: clamp(56px, 14vw, 84px); margin: 8px 0; }}
+    .target-card h1 {{ font-size: clamp(56px, 14vw, 84px); margin: 8px 0; color: #E65100; }}
 
     .task-done {{
         background-color: {bg2};
@@ -251,6 +267,82 @@ st.markdown(f"""
     div[data-testid="stHorizontalBlock"] > div:nth-child(5) .stButton {{ animation-delay: 0.26s; }}
     div[data-testid="stHorizontalBlock"] > div:nth-child(6) .stButton {{ animation-delay: 0.32s; }}
     .stButton {{ animation: fadeInUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards; }}
+
+    /* ================================================================
+       FIX: native Streamlit widgets (labels, dropdowns, text inputs,
+       expanders, alerts) otherwise follow the visitor's browser/OS
+       dark-mode setting instead of this app's own theme, which is what
+       causes invisible / low-contrast text. Force them to match.
+       ================================================================ */
+
+    /* Plain markdown text, bold labels, captions, widget labels */
+    .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+    [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p,
+    [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label,
+    .stSelectbox label, .stTextInput label, .stTimeInput label,
+    .stSlider label, .stToggle label {{
+        color: {text_main} !important;
+    }}
+
+    /* Selectbox / dropdown closed state */
+    div[data-baseweb="select"] > div {{
+        background-color: {_solid_card_bg} !important;
+        border-color: {border_col} !important;
+    }}
+    div[data-baseweb="select"] span, div[data-baseweb="select"] div {{
+        color: {text_main} !important;
+    }}
+
+    /* Dropdown popup list (renders in a portal, still targetable globally) */
+    div[data-baseweb="popover"] ul,
+    div[data-baseweb="popover"] li {{
+        background-color: {_solid_card_bg} !important;
+        color: {text_main} !important;
+    }}
+    div[data-baseweb="popover"] li:hover {{
+        background-color: {bg2} !important;
+    }}
+
+    /* Text input / time input boxes */
+    div[data-baseweb="input"] input,
+    div[data-baseweb="input"] {{
+        background-color: {_solid_card_bg} !important;
+        color: {text_main} !important;
+        border-color: {border_col} !important;
+    }}
+    div[data-baseweb="input"] input::placeholder {{
+        color: {text_main}99 !important;
+    }}
+
+    /* Slider / select-slider value labels */
+    div[data-baseweb="slider"] div, div[data-testid="stTickBarMin"],
+    div[data-testid="stTickBarMax"] {{
+        color: {text_main} !important;
+    }}
+
+    /* Expander header + body */
+    [data-testid="stExpander"] {{
+        background: {card_bg} !important;
+        border: 2px solid {border_col} !important;
+        border-radius: 14px !important;
+    }}
+    [data-testid="stExpander"] summary, [data-testid="stExpander"] summary p,
+    [data-testid="stExpander"] p, [data-testid="stExpander"] span {{
+        color: {text_main} !important;
+    }}
+
+    /* Alert boxes (st.success / st.info / st.warning) keep their own
+       accessible background — just make sure the text inside is dark
+       and readable rather than inheriting a stray light color. */
+    [data-testid="stAlertContentSuccess"] p,
+    [data-testid="stAlertContentInfo"] p,
+    [data-testid="stAlertContentWarning"] p,
+    [data-testid="stAlertContentError"] p {{
+        color: #1a1a1a !important;
+    }}
+
+    /* Divider line visible in both modes */
+    hr {{ border-color: {border_col} !important; }}
 
     /* ---------- MOBILE OPTIMIZATION ---------- */
     @media (max-width: 640px) {{
@@ -323,7 +415,7 @@ STREAK_PHRASES = [
 with st.sidebar:
     st.markdown(f"<h2 style='color:{primary};'>⚙️ Customize MindEase</h2>", unsafe_allow_html=True)
 
-    st.markdown("**🎨 Colour Theme**")
+    st.markdown(f"<p style='color:{text_main}; font-weight:700;'>🎨 Colour Theme</p>", unsafe_allow_html=True)
     new_theme = st.selectbox("Choose a theme", list(THEMES.keys()),
                               index=list(THEMES.keys()).index(st.session_state["theme"]),
                               label_visibility="collapsed")
@@ -331,14 +423,14 @@ with st.sidebar:
         st.session_state["theme"] = new_theme
         st.rerun()
 
-    st.markdown("**🔠 Text Size**")
+    st.markdown(f"<p style='color:{text_main}; font-weight:700;'>🔠 Text Size</p>", unsafe_allow_html=True)
     new_font = st.select_slider("Choose text size", options=list(FONT_SCALES.keys()),
                                  value=st.session_state["font_scale"], label_visibility="collapsed")
     if new_font != st.session_state["font_scale"]:
         st.session_state["font_scale"] = new_font
         st.rerun()
 
-    st.markdown("**🌓 Display**")
+    st.markdown(f"<p style='color:{text_main}; font-weight:700;'>🌓 Display</p>", unsafe_allow_html=True)
     new_contrast = st.toggle("High Contrast Mode", value=st.session_state["high_contrast"])
     if new_contrast != st.session_state["high_contrast"]:
         st.session_state["high_contrast"] = new_contrast
@@ -349,7 +441,7 @@ with st.sidebar:
         st.session_state["reduce_motion"] = new_motion
         st.rerun()
 
-    st.markdown("**🔊 Voice Reminders**")
+    st.markdown(f"<p style='color:{text_main}; font-weight:700;'>🔊 Voice Reminders</p>", unsafe_allow_html=True)
     new_sound = st.toggle("Enable Spoken Feedback", value=st.session_state["sound_on"])
     if new_sound != st.session_state["sound_on"]:
         st.session_state["sound_on"] = new_sound
@@ -444,7 +536,7 @@ if st.session_state["active_tab"] == "game":
         ],
     }
 
-    st.markdown("<p class='body-text' style='margin-bottom:6px;'><b>🎯 Choose what to practice with:</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{text_main}; font-weight:700; margin-bottom:6px;'>🎯 Choose what to practice with:</p>", unsafe_allow_html=True)
     theme_choice = st.selectbox(
         "Practice set", list(GAME_THEMES.keys()),
         index=list(GAME_THEMES.keys()).index(st.session_state.get("game_theme", "🌞 Nature & Sky")),
@@ -545,7 +637,7 @@ elif st.session_state["active_tab"] == "mood":
                 getattr(st, style)(msg)
 
     if st.session_state["mood_log"]:
-        st.markdown("<br><div class='body-text'><b>📝 Today's Check-ins:</b></div>", unsafe_allow_html=True)
+        st.markdown(f"<br><div class='body-text' style='color:{text_main};'><b>📝 Today's Check-ins:</b></div>", unsafe_allow_html=True)
         for t, label in reversed(st.session_state["mood_log"][-5:]):
             st.markdown(f"<span class='badge'>{t} — {label}</span>", unsafe_allow_html=True)
 
@@ -587,7 +679,7 @@ elif st.session_state["active_tab"] == "schedule":
 
     pending = sorted([t for t in all_tasks if not st.session_state["tasks"][t["key"]]], key=sort_key)
 
-    st.markdown("<p class='body-text' style='margin-bottom:6px;'><b>🎯 Right Now</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{text_main}; font-weight:700; margin-bottom:6px;'>🎯 Right Now</p>", unsafe_allow_html=True)
     if pending:
         focus = pending[0]
         time_str = focus["time"].strftime("%I:%M %p").lstrip("0") if focus["time"] else "Anytime"
@@ -640,7 +732,7 @@ elif st.session_state["active_tab"] == "schedule":
     with pcol1:
         st.markdown(f"<span class='badge'>{tier_icon} {int(percent*100)}%</span>", unsafe_allow_html=True)
     with pcol2:
-        st.markdown(f"<span class='body-text'>{tier_text}</span>", unsafe_allow_html=True)
+        st.markdown(f"<span class='body-text' style='color:{text_main};'>{tier_text}</span>", unsafe_allow_html=True)
 
     # Speak + celebrate only the moment a milestone is newly crossed, not on every rerun
     milestone_now = 100 if percent >= 1.0 else 66 if percent >= 0.66 else 33 if percent >= 0.33 else 0
