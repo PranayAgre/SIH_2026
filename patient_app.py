@@ -558,50 +558,162 @@ elif st.session_state["active_tab"] == "schedule":
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
     st.markdown("<div class='section-head'>📋 Today's Routine Schedule</div>", unsafe_allow_html=True)
 
-    tasks_config = [
-        ("task1", "1. Morning Medication & Breakfast (8:30 AM)",
-         "Time for morning medication with a fresh glass of water.",
-         "Great job completing your morning routine!"),
-        ("task2", "2. Afternoon Walk or Rest (2:00 PM)",
-         "Time for a gentle short walk or relaxation.",
-         "Walk completed! Stay hydrated."),
-        ("task3", "3. Evening Wind-down & Reading (7:00 PM)",
-         "Time to relax with a book or some quiet music before bed.",
-         "Lovely! A calm evening helps you sleep well."),
+    from datetime import time as dtime
+
+    # ---- Base routine (fixed daily anchors) ----
+    BASE_TASKS = [
+        {"key": "task1", "icon": "🍳", "label": "Morning Medication & Breakfast", "time": dtime(8, 30),
+         "read": "Time for morning medication with a fresh glass of water.",
+         "done": "Great job completing your morning routine!"},
+        {"key": "task2", "icon": "🚶", "label": "Afternoon Walk or Rest", "time": dtime(14, 0),
+         "read": "Time for a gentle short walk or relaxation.",
+         "done": "Walk completed! Stay hydrated."},
+        {"key": "task3", "icon": "🌙", "label": "Evening Wind-down & Reading", "time": dtime(19, 0),
+         "read": "Time to relax with a book or some quiet music before bed.",
+         "done": "Lovely! A calm evening helps you sleep well."},
     ]
 
-    completed = sum(st.session_state["tasks"].values())
-    st.progress(completed / len(tasks_config), text=f"{completed} of {len(tasks_config)} tasks completed today")
+    st.session_state.setdefault("custom_tasks", [])
+    st.session_state.setdefault("day_streak", 0)
+    st.session_state.setdefault("last_milestone", 0)
+
+    all_tasks = BASE_TASKS + st.session_state["custom_tasks"]
+    for t in all_tasks:
+        st.session_state["tasks"].setdefault(t["key"], False)
+
+    # ---- "Right Now" focus card: shows just ONE task at a time to avoid overwhelm ----
+    def sort_key(t):
+        return t["time"] if t["time"] else dtime(23, 59)
+
+    pending = sorted([t for t in all_tasks if not st.session_state["tasks"][t["key"]]], key=sort_key)
+
+    st.markdown("<p class='body-text' style='margin-bottom:6px;'><b>🎯 Right Now</b></p>", unsafe_allow_html=True)
+    if pending:
+        focus = pending[0]
+        time_str = focus["time"].strftime("%I:%M %p").lstrip("0") if focus["time"] else "Anytime"
+        is_due = focus["time"] is None or focus["time"] <= now.time()
+        status_txt = "⏰ It's time for this now" if is_due else f"🕒 Coming up at {time_str}"
+        st.markdown(f"""
+            <div class='target-card' style='padding:22px;'>
+                <p style='font-size: clamp(14px,3.2vw,{fonts['body']}px); color:{accent_dark}; font-weight:bold; margin:0;'>{status_txt}</p>
+                <h1 style='margin:8px 0; font-size:clamp(44px,10vw,64px);'>{focus['icon']}</h1>
+                <h3 style='font-size: clamp(18px,4.4vw,{fonts['section']}px); color:{accent_dark}; margin:0;'>{focus['label']}</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        fc1, fc2 = st.columns(2)
+        with fc1:
+            if st.button("🔊 Read Reminder", key=f"focus_audio_{focus['key']}"):
+                speak(focus["read"])
+        with fc2:
+            if st.button("✅ Mark Done", key=f"focus_done_{focus['key']}"):
+                st.session_state["tasks"][focus["key"]] = True
+                speak(focus["done"])
+                st.rerun()
+    else:
+        st.markdown(f"""
+            <div class='task-done' style='text-align:center; font-size:clamp(18px,4vw,{fonts['section']}px);'>
+                🎉 Everything is done for today — enjoy your time!
+            </div>
+        """, unsafe_allow_html=True)
+
     st.markdown("<br>", unsafe_allow_html=True)
 
-    for i, (tkey, title, read_phrase, done_phrase) in enumerate(tasks_config):
-        st.markdown(f"<h3 class='body-text' style='color:{primary}; font-size:clamp(16px,4vw,{fonts['body']+4}px);'>{title}</h3>", unsafe_allow_html=True)
-        t_col1, t_col2 = st.columns([2, 1])
+    # ---- Progress bar with milestone reactions (not just a number going up) ----
+    completed = sum(1 for t in all_tasks if st.session_state["tasks"][t["key"]])
+    total = len(all_tasks)
+    percent = completed / total if total else 0
 
-        with t_col1:
-            if st.button("🔊 Read Reminder", key=f"audio_{tkey}"):
-                speak(read_phrase)
+    st.progress(percent, text=f"{completed} of {total} tasks completed today")
 
-        with t_col2:
-            if not st.session_state["tasks"][tkey]:
-                if st.button("✅ Mark Done", key=f"btn_done_{tkey}"):
-                    st.session_state["tasks"][tkey] = True
-                    speak(done_phrase)
-                    st.rerun()
+    if percent >= 1.0:
+        tier_icon, tier_text = "🏆", "All done — fantastic work today!"
+    elif percent >= 0.66:
+        tier_icon, tier_text = "🌳", "Almost there, keep going!"
+    elif percent >= 0.33:
+        tier_icon, tier_text = "🌿", "Halfway there — nice progress!"
+    elif percent > 0:
+        tier_icon, tier_text = "🌱", "Great start!"
+    else:
+        tier_icon, tier_text = "🕊️", "Your day hasn't started yet."
+
+    pcol1, pcol2 = st.columns([1, 3])
+    with pcol1:
+        st.markdown(f"<span class='badge'>{tier_icon} {int(percent*100)}%</span>", unsafe_allow_html=True)
+    with pcol2:
+        st.markdown(f"<span class='body-text'>{tier_text}</span>", unsafe_allow_html=True)
+
+    # Speak + celebrate only the moment a milestone is newly crossed, not on every rerun
+    milestone_now = 100 if percent >= 1.0 else 66 if percent >= 0.66 else 33 if percent >= 0.33 else 0
+    if milestone_now > st.session_state["last_milestone"]:
+        st.session_state["last_milestone"] = milestone_now
+        if milestone_now == 100:
+            st.session_state["day_streak"] += 1
+            speak(f"Wonderful! All tasks are complete. Your day streak is now {st.session_state['day_streak']}.")
+            if not st.session_state["reduce_motion"]:
+                st.balloons()
+        elif milestone_now >= 33:
+            speak(tier_text)
+
+    st.markdown(f"<span class='badge'>🔥 Day Streak: {st.session_state['day_streak']}</span>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ---- Full task list (everything, expandable) ----
+    with st.expander("📋 See Full Routine List", expanded=False):
+        for i, t in enumerate(all_tasks):
+            time_str = t["time"].strftime("%I:%M %p").lstrip("0") if t["time"] else "Anytime"
+            st.markdown(
+                f"<h3 class='body-text' style='color:{primary}; font-size:clamp(16px,4vw,{fonts['body']+4}px);'>"
+                f"{t['icon']} {t['label']} ({time_str})</h3>",
+                unsafe_allow_html=True
+            )
+            t_col1, t_col2, t_col3 = st.columns([2, 1, 1]) if t["key"] not in [bt["key"] for bt in BASE_TASKS] else st.columns([2, 1])
+
+            with t_col1:
+                if st.button("🔊 Read Reminder", key=f"audio_{t['key']}"):
+                    speak(t["read"])
+            with t_col2:
+                if not st.session_state["tasks"][t["key"]]:
+                    if st.button("✅ Mark Done", key=f"btn_done_{t['key']}"):
+                        st.session_state["tasks"][t["key"]] = True
+                        speak(t["done"])
+                        st.rerun()
+                else:
+                    st.markdown("<div class='task-done'>✓ Completed</div>", unsafe_allow_html=True)
+            if t["key"] not in [bt["key"] for bt in BASE_TASKS]:
+                with t_col3:
+                    if st.button("🗑️ Remove", key=f"remove_{t['key']}"):
+                        st.session_state["custom_tasks"] = [
+                            c for c in st.session_state["custom_tasks"] if c["key"] != t["key"]
+                        ]
+                        st.session_state["tasks"].pop(t["key"], None)
+                        st.rerun()
+
+            if i < len(all_tasks) - 1:
+                st.divider()
+
+    # ---- Add your own routine item (caregiver or patient customization) ----
+    with st.expander("➕ Add a New Routine Item", expanded=False):
+        new_label = st.text_input("What is the activity?", placeholder="e.g. Water the plants", key="new_task_label")
+        new_icon = st.selectbox("Pick an icon", ["📌", "💊", "🥗", "🧴", "📞", "🎵", "🧘", "🐾"], key="new_task_icon")
+        new_time = st.time_input("What time? (optional)", value=None, key="new_task_time")
+        if st.button("➕ Add to Routine", key="add_task_btn"):
+            if new_label.strip():
+                new_key = f"custom_{len(st.session_state['custom_tasks'])}_{int(now.timestamp())}"
+                st.session_state["custom_tasks"].append({
+                    "key": new_key, "icon": new_icon, "label": new_label.strip(), "time": new_time,
+                    "read": f"Time for {new_label.strip()}.",
+                    "done": f"Nicely done — {new_label.strip()} is complete!",
+                })
+                st.session_state["tasks"][new_key] = False
+                speak(f"Added {new_label.strip()} to your routine.")
+                st.rerun()
             else:
-                st.markdown("<div class='task-done'>✓ Completed</div>", unsafe_allow_html=True)
+                st.warning("Please type the activity name first.")
 
-        if i < len(tasks_config) - 1:
-            st.divider()
-
-    if completed == len(tasks_config):
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.success("🎉 All tasks completed for today — wonderful work!")
-        if not st.session_state["reduce_motion"]:
-            st.balloons()
-
-    if st.button("🔄 Reset Today's Tasks", key="reset_tasks"):
+    if st.button("🔄 Start New Day (Reset Tasks)", key="reset_tasks"):
         st.session_state["tasks"] = {k: False for k in st.session_state["tasks"]}
+        st.session_state["last_milestone"] = 0
+        speak("Starting a fresh new day. Let's go!")
         st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
